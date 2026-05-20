@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f5f0eb">
+<title>首尔5天攻略 | 2026.5.27-5.31</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+:root {
+  --bg: #f5f0eb; --card-bg: rgba(255,252,249,0.75); --border: rgba(0,0,0,0.06);
+  --text: #4a3f38; --muted: #8a7e74; --accent: #c4978b; --accent2: #a0b4a0;
+  --rose: #d4a0a0; --sage: #8aaa8a; --blue: #7a9db8; --gold: #c4a86a;
+  --warn: #c4665a; --green: #6aaa7a;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06); --shadow-lg: 0 4px 20px rgba(0,0,0,0.08);
+  --radius: 14px;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { scroll-behavior:smooth; font-size: 17px; }
+body {
+  font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); padding-bottom: 80px;
+  -webkit-font-smoothing: antialiased; touch-action: manipulation;
+  max-width: 100vw; overflow-x: hidden; line-height: 1.55;
+}
+
+/* ── Header ── */
+header {
+  background: rgba(245,240,235,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  padding: 16px 12px; text-align: center; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 500;
+}
+header h1 { font-size: 1.2em; color: var(--text); font-weight: 600; }
+header .dates { color: var(--accent); font-size: 0.75em; margin-top: 2px; }
+
+/* ── Bottom Nav ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(245,240,235,0.94); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  display: flex; overflow-x: auto; gap: 3px; padding: 5px 4px;
+  padding-bottom: max(5px, env(safe-area-inset-bottom));
+}
+.bottom-nav button {
+  flex: 0 0 auto; padding: 7px 8px; border-radius: 10px;
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  font-size: 0.68em; white-space: nowrap; min-width: 42px; min-height: 42px;
+  text-align: center; cursor: pointer; user-select: none; font-family: inherit;
+}
+.bottom-nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+
+/* ── Container ── */
+.container { max-width: 100%; margin: 0 auto; padding: 10px; }
+
+/* ── Map ── */
+.map-wrap { position: relative; margin-bottom: 12px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-lg); }
+#map { height: 340px; width: 100%; z-index: 1; }
+.map-loading {
+  position: absolute; inset: 0; background: rgba(245,240,235,0.9); z-index: 2;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  color: var(--muted); font-size: 0.9em; gap: 8px; pointer-events: none;
+}
+.map-loading.hidden { display: none; }
+.map-spinner { width: 32px; height: 32px; border: 3px solid #e0d8d0; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.map-error {
+  display: none; position: absolute; inset: 0; background: rgba(245,240,235,0.95); z-index: 3;
+  align-items: center; justify-content: center; flex-direction: column;
+  color: var(--muted); font-size: 0.85em; gap: 8px; text-align: center; padding: 20px;
+}
+.map-error.show { display: flex; }
+.map-error button {
+  padding: 8px 16px; border-radius: 10px; background: var(--accent); border: none;
+  color: #fff; font-size: 0.9em; cursor: pointer; min-height: 42px; font-family: inherit;
+}
+
+.legend { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 8px 0; font-size: 0.7em; }
+.legend span { display: flex; align-items: center; gap: 3px; }
+.legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 2px solid #fff; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+/* ── Day Panels ── */
+.day-panel { display: none; }
+.day-panel.active { display: block; }
+.day-title { color: var(--accent); font-size: 1.1em; font-weight: 600; margin-bottom: 3px; }
+.day-sub { color: var(--muted); font-size: 0.78em; margin-bottom: 6px; }
+.weather-tag {
+  display: inline-block; padding: 4px 10px; border-radius: 14px; font-size: 0.72em;
+  background: rgba(122,157,184,0.15); color: var(--blue); margin-bottom: 10px;
+}
+
+/* ── Schedule ── */
+.schedule { list-style: none; }
+.schedule li {
+  padding: 11px; margin: 5px 0; background: var(--card-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--radius); border-left: 3px solid var(--accent); box-shadow: var(--shadow);
+}
+.schedule .time { color: var(--accent); font-weight: 600; font-size: 0.8em; display: block; margin-bottom: 3px; }
+.schedule .desc { font-size: 0.84em; line-height: 1.5; }
+.tag {
+  display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72em;
+  margin-right: 3px; vertical-align: middle; font-weight: 500;
+}
+.tag-shop { background: rgba(196,168,106,0.2); color: #8a7030; }
+.tag-food { background: rgba(196,102,90,0.15); color: var(--warn); }
+.tag-landmark { background: rgba(122,157,184,0.18); color: var(--blue); }
+.tag-transport { background: rgba(106,170,122,0.18); color: var(--green); }
+.tag-coffee { background: rgba(180,150,120,0.2); color: #8a6e50; }
+.tag-fragrance { background: rgba(200,140,160,0.2); color: #b87a90; }
+
+/* ── Spot Cards (Glassmorphism) ── */
+.spot-list { margin-top: 8px; }
+.spot-card {
+  background: var(--card-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-radius: var(--radius); padding: 12px; margin: 6px 0;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  font-size: 0.84em; position: relative; display: flex; gap: 10px; align-items: flex-start;
+}
+.spot-card .sc-body { flex: 1; min-width: 0; }
+.spot-card .sn { font-weight: 600; color: var(--text); font-size: 0.95em; }
+.spot-card .sd { color: var(--muted); font-size: 0.8em; margin-top: 3px; line-height: 1.45; }
+.spot-card .sa { margin-top: 6px; }
+.spot-card .sa a {
+  display: inline-block; padding: 6px 14px; border-radius: 16px;
+  font-size: 0.8em; text-decoration: none; font-weight: 600;
+  background: var(--blue); color: #fff;
+  min-height: 36px; line-height: 24px; text-align: center;
+  transition: opacity 0.2s;
+}
+.spot-card .sa a:active { opacity: 0.7; }
+
+/* ── Check-in ── */
+.check-btn {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid #ccc; background: transparent; cursor: pointer;
+  font-size: 0.85em; display: flex; align-items: center; justify-content: center;
+  color: #ccc; margin-top: 2px; transition: all 0.25s; font-family: inherit;
+}
+.check-btn.checked { background: var(--green); border-color: var(--green); color: #fff; }
+
+.section-title {
+  color: var(--accent); font-size: 1em; font-weight: 600; margin: 18px 0 8px;
+  padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+
+/* ── Accordion ── */
+.ac-btn {
+  width: 100%; text-align: left; padding: 11px 14px;
+  background: rgba(0,0,0,0.03); border: 1px solid var(--border);
+  color: var(--text); font-size: 0.86em; border-radius: 10px; font-family: inherit;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 5px; min-height: 46px; cursor: pointer; user-select: none;
+}
+.ac-btn::after { content: '▸'; color: var(--accent); font-size: 0.95em; transition: transform 0.2s; }
+.ac-btn.open::after { transform: rotate(90deg); }
+.ac-content { display: none; margin-top: 4px; }
+.ac-content.open { display: block; }
+
+/* ── Currency FAB + Modal ── */
+.fab {
+  position: fixed; right: 16px; bottom: 100px; z-index: 999;
+  width: 48px; height: 48px; border-radius: 50%; background: var(--gold);
+  border: none; color: #fff; font-size: 1.2em; font-weight: bold;
+  box-shadow: var(--shadow-lg); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 2000; padding: 16px;
+  align-items: center; justify-content: center;
+}
+.modal.open { display: flex; }
+.modal-box {
+  background: #fdfaf6; border-radius: 18px; padding: 20px;
+  width: 100%; max-width: 360px; box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  max-height: 85vh; overflow-y: auto;
+}
+.modal-box h3 { color: var(--accent); margin-bottom: 12px; font-size: 1.05em; text-align: center; font-weight: 600; }
+.modal-rate { text-align: center; color: var(--muted); font-size: 0.75em; margin: 6px 0; }
+.modal-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+.modal-row input, .modal-row select {
+  padding: 10px; border-radius: 10px; border: 1px solid #e0d8d0;
+  background: #fff; color: var(--text); font-size: 1em;
+  min-height: 44px; font-family: inherit;
+}
+.modal-row input { flex: 1; text-align: right; }
+.modal-row select { width: 70px; text-align: center; }
+.modal-row .swap-btn {
+  width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,0.06);
+  border: 1px solid var(--border); color: var(--accent); font-size: 1.1em;
+  cursor: pointer; flex-shrink: 0; font-family: inherit;
+}
+.modal-close {
+  width: 100%; padding: 12px; border-radius: 10px; background: var(--accent);
+  border: none; color: #fff; font-size: 0.95em; margin-top: 10px;
+  min-height: 44px; cursor: pointer; font-family: inherit;
+}
+
+/* ── Expense Modal ── */
+.expense-list { margin-top: 10px; }
+.expense-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.02);
+  margin: 3px 0; font-size: 0.8em; gap: 6px;
+}
+.expense-item .del { color: var(--warn); cursor: pointer; font-size: 0.85em; flex-shrink: 0; min-width: 24px; text-align: center; }
+.expense-total { font-size: 1em; font-weight: 700; color: var(--accent); text-align: center; margin: 10px 0; }
+
+/* ── Phrase cards ── */
+.phrase-grid { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 8px; }
+@media (min-width: 480px) { .phrase-grid { grid-template-columns: 1fr 1fr; } }
+.pc {
+  background: var(--card-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--radius); padding: 10px 12px; border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.pc .ko { color: var(--text); font-size: 1em; font-weight: 600; }
+.pc .pron { color: var(--sage); font-size: 0.78em; margin: 2px 0; }
+.pc .en { color: var(--blue); font-size: 0.78em; }
+.pc .zh { color: var(--muted); font-size: 0.75em; }
+
+.route-box {
+  margin-top: 10px; padding: 10px 12px; border-radius: var(--radius);
+  font-size: 0.8em; line-height: 1.5; background: rgba(160,180,160,0.12); border: 1px solid rgba(160,180,160,0.2);
+}
+.route-box strong { color: var(--accent); }
+.route-box.warn { background: rgba(196,102,90,0.1); border: 1px solid rgba(196,102,90,0.2); }
+.duty-warn {
+  background: rgba(196,102,90,0.1); border: 1px solid rgba(196,102,90,0.2);
+  border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-size: 0.82em;
+}
+.duty-warn strong { color: var(--warn); }
+
+.tips {
+  background: var(--card-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--radius); padding: 14px; margin-top: 10px;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.tips h3 { color: var(--accent); margin-bottom: 6px; font-size: 0.95em; font-weight: 600; }
+.tips ul { list-style: disc; padding-left: 18px; }
+.tips li { margin: 4px 0; font-size: 0.82em; line-height: 1.55; }
+
+.tbl { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 0.76em; }
+.tbl th, .tbl td { padding: 7px; text-align: left; border-bottom: 1px solid var(--border); }
+.tbl th { color: var(--accent); font-weight: 600; font-size: 0.85em; }
+
+footer { text-align: center; padding: 12px; color: #b8a9a0; font-size: 0.66em; }
+.tw { color: var(--warn); font-weight: 600; }
+
+/* Leaflet overrides */
+.leaflet-container { background: #f5f0eb !important; font-family: inherit; }
+.leaflet-popup-content-wrapper { background: #fff; color: var(--text); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); padding: 2px; }
+.leaflet-popup-content { margin: 12px 14px; font-size: 0.88em; line-height: 1.5; }
+.leaflet-popup-tip { background: #fff; }
+.leaflet-popup-close-button { color: var(--accent) !important; font-size: 22px !important; padding: 6px !important; }
+.leaflet-popup-content a { color: #fff; display: inline-block; margin-top: 4px; padding: 5px 12px; background: var(--blue); border-radius: 14px; text-decoration: none; font-size: 0.85em; font-weight: 500; }
+.leaflet-control-zoom a { background: #fff; color: var(--text); border-color: #e0d8d0; width: 36px; height: 36px; line-height: 36px; font-size: 18px; border-radius: 8px; box-shadow: var(--shadow); }
+
+@media (min-width: 769px) {
+  .container { max-width: 1100px; padding: 20px; }
+  body { padding-bottom: 0; }
+  .bottom-nav { display: none; }
+  .fab { display: none; }
+  #map { height: 500px; }
+  .day-panel { border-radius: var(--radius); padding: 24px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🇰🇷 首尔5天4晚 · 购物+美食</h1>
+  <div class="dates">5.27-5.31 | 4人 | 砖石酒店(恩平区鹰岩站) | 3仁川+1金浦</div>
+</header>
+
+<div class="container">
+  <div class="legend">
+    <span><i class="dot" style="background:#e07080"></i>Day1</span>
+    <span><i class="dot" style="background:#d4a050"></i>Day2</span>
+    <span><i class="dot" style="background:#6a9cc4"></i>Day3</span>
+    <span><i class="dot" style="background:#6aaa7a"></i>Day4</span>
+    <span><i class="dot" style="background:#9a80b8"></i>Day5</span>
+    <span><i class="dot" style="background:#9a8a7a"></i>酒店/机场</span>
+  </div>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-loading" id="mapLoading"><div class="map-spinner"></div>地图加载中...</div>
+    <div class="map-error" id="mapError">
+      <p>🗺️ 地图暂时无法加载</p>
+      <p style="font-size:0.85em;">使用高德底图(国内秒开) · 如无法显示请检查网络</p>
+      <button onclick="reloadMap()">🔄 重新加载</button>
+    </div>
+  </div>
+
+  <div id="app"></div>
+
+  <div class="tips"><h3>📋 实用Tips</h3><ul>
+    <li><strong>交通卡：</strong>机场便利店买T-money卡 ₩2,500。地铁起步 ₩1,400，换乘30min内免费</li>
+    <li><strong>导航：</strong>每个地点卡片都有 <strong style="color:var(--blue)">🍎 苹果地图</strong> 按钮，点击直接唤醒 iPhone 原生地图 App 导航</li>
+    <li><strong>韩国出租车：</strong>🚕<span class="tw">普通车(橘色/银色)</span>起步 ₩3,800；<strong>黑色模范车很贵</strong>，尽量打普通车；大型车(可坐4人+行李)也贵</li>
+    <li><strong>翻译：</strong><strong>Papago</strong> 最准，拍照翻译菜单超实用</li>
+    <li><strong>换汇：</strong>明洞换钱所汇率最好(带人民币现金)。💱 右下角计算器随时换算</li>
+    <li><strong>退税：</strong>单笔满 ₩30,000 退约7%。保留退税单机场退</li>
+    <li><strong>免税提货：</strong>四人都有免税品！仁川T1和金浦提货点不同！提前APP确认位置</li>
+    <li><strong>WiFi/流量：</strong>淘宝WiFi蛋或韩国eSIM</li>
+    <li><strong>插座：</strong>C/F型两脚圆头，带转换插头</li>
+  </ul></div>
+  <div class="tips" style="margin-top:8px;"><h3>💰 预算 (每人)</h3>
+    <table class="tbl"><tr><th>项目</th><th>韩元</th><th>≈人民币</th></tr>
+      <tr><td>🏨酒店(4晚)</td><td>~₩200,000-300,000</td><td>~¥1,100-1,650</td></tr>
+      <tr><td>🚇交通(5天)</td><td>~₩50,000</td><td>~¥275</td></tr>
+      <tr><td>🍖餐饮(5天)</td><td>~₩250,000</td><td>~¥1,375</td></tr>
+      <tr><td>🎫景点</td><td>~₩20,000</td><td>~¥110</td></tr>
+      <tr><td><strong>合计(不含机票+购物)</strong></td><td><strong>~₩520,000-620,000</strong></td><td><strong>~¥2,800-3,400</strong></td></tr>
+    </table>
+  </div>
+</div>
+
+<button class="fab" onclick="toggleCurrency()">💱</button>
+<div class="modal" id="currencyModal" onclick="if(event.target===this)toggleCurrency()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3>💱 汇率换算</h3>
+    <div class="modal-rate">1 CNY ≈ 185 KRW | 1 USD ≈ 1350 KRW</div>
+    <div class="modal-row"><input type="number" id="cnyInput" value="100" oninput="cv()" min="0"><select id="cnyCur" onchange="cv()"><option value="cny">CNY</option><option value="usd">USD</option></select></div>
+    <div class="modal-row"><button class="swap-btn" onclick="sw()">⇅</button></div>
+    <div class="modal-row"><input type="number" id="krwInput" oninput="cv2()" min="0" step="100"><select id="krwCur" onchange="cv2()"><option value="krw">KRW</option><option value="usd">USD</option></select></div>
+    <button class="modal-close" onclick="toggleCurrency()">关闭</button>
+  </div>
+</div>
+
+<!-- Expense Tracker Modal -->
+<div class="modal" id="expenseModal" onclick="if(event.target===this)toggleExpense()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3>💰 旅行记账本</h3>
+    <div class="modal-row">
+      <select id="expWho"><option value="A">👩 队友A</option><option value="B">👩‍🦰 队友B</option><option value="C">👱‍♀️ 队友C</option><option value="D">👧 队友D</option><option value="all">👥 四人公摊</option></select>
+    </div>
+    <div class="modal-row">
+      <input type="number" id="expAmt" placeholder="金额 (韩元)" min="0" step="100">
+    </div>
+    <div class="modal-row">
+      <input type="text" id="expNote" placeholder="用途 (如: 明洞炸鸡)">
+    </div>
+    <button class="modal-close" style="background:var(--sage);margin-top:4px;" onclick="addExpense()">+ 记录</button>
+    <div class="expense-list" id="expenseList"></div>
+    <div class="expense-total" id="expenseTotal"></div>
+    <button class="modal-close" onclick="toggleExpense()">关闭</button>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bn">
+  <button class="active" onclick="show(1)">📅 Day1</button>
+  <button onclick="show(2)">📅 Day2</button>
+  <button onclick="show(3)">📅 Day3</button>
+  <button onclick="show(4)">📅 Day4</button>
+  <button onclick="show(5)">📅 Day5</button>
+  <button onclick="show('all')">🗺️总览</button>
+  <button onclick="show('talk')">💬用语</button>
+  <button onclick="show('wx')">🌤天气</button>
+  <button onclick="toggleExpense()">💰记账</button>
+</nav>
+
+<footer>首尔5天4晚 · 2026.5.27-5.31 · 砖石酒店 恩平区鹰岩站 | 高德底图 + 苹果地图导航</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ═══════════ APPLE MAPS ═══════════
+function AM(name, lat, lng) { return 'https://maps.apple.com/?q='+encodeURIComponent(name)+'&ll='+lat+','+lng; }
+
+// ═══════════ AMAP TILES ═══════════
+var amapTile = 'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}';
+
+// ═══════════ MAP ═══════════
+var map = null;
+var allMarkers = [];
+var D = {1:'#e07080',2:'#d4a050',3:'#6a9cc4',4:'#6aaa7a',5:'#9a80b8',all:'#9a8a7a'};
+
+function initMap() {
+  try {
+    map = L.map('map', { tap: true, touchZoom: true, dragging: true }).setView([37.56, 126.98], 11);
+    L.tileLayer(amapTile, {
+      subdomains: ['1','2','3','4'],
+      attribution: '© 高德地图', maxZoom: 18
+    }).on('tileload', function() {
+      document.getElementById('mapLoading').classList.add('hidden');
+    }).on('tileerror', function() {
+      document.getElementById('mapLoading').classList.add('hidden');
+      document.getElementById('mapError').classList.add('show');
+    }).addTo(map);
+    setTimeout(function() {
+      document.getElementById('mapLoading').classList.add('hidden');
+      if (document.querySelectorAll('.leaflet-tile-loaded').length === 0) {
+        document.getElementById('mapError').classList.add('show');
+      }
+    }, 5000);
+  } catch(e) {
+    document.getElementById('mapLoading').classList.add('hidden');
+    document.getElementById('mapError').classList.add('show');
+  }
+}
+
+function reloadMap() {
+  document.getElementById('mapError').classList.remove('show');
+  document.getElementById('mapLoading').classList.remove('hidden');
+  if (map) { map.remove(); map = null; allMarkers = []; }
+  document.getElementById('map').style.display = 'block';
+  initMap(); createAllMarkers();
+}
+
+function addMarker(lat, lng, color, label, name, desc, day) {
+  if (!map) return;
+  var sz = window.innerWidth < 769 ? 36 : 30;
+  var icon = L.divIcon({
+    className: 'custom-icon',
+    html: '<div style="background:'+color+';width:'+sz+'px;height:'+sz+'px;border-radius:50%;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,0.25);font-size:'+(sz>32?'9px':'11px')+'">'+label+'</div>',
+    iconSize: [sz+6, sz+6], iconAnchor: [sz/2+3, sz/2+3]
+  });
+  var popupHtml = '<strong>'+name+'</strong><br><small>'+desc+'</small><br><a href="'+AM(name,lat,lng)+'" target="_blank">🍎 苹果地图导航 →</a>';
+  try {
+    var mk = L.marker([lat, lng], {icon: icon}).bindPopup(popupHtml, {closeButton: true, autoClose: true});
+    mk._day = day; allMarkers.push(mk); mk.addTo(map);
+  } catch(e) {}
+}
+
+function createAllMarkers() {
+  addMarker(37.597, 126.918, D.all, '🏨', '砖石酒店+鹰岩站', '恩平区 Eunpyeong-ro 8-gil 1\n地铁6号线鹰岩站(610)\n机场大巴6012路', 'all');
+  addMarker(37.460, 126.441, D[5], '✈', '仁川机场T1', '3人出发/到达 MU550/MU6257\n免税品提货点', 'all');
+  addMarker(37.558, 126.795, D[5], '✈', '金浦机场', '1人出发/到达 CZ317/CZ318\n免税品提货点', 'all');
+  addMarker(37.5253, 126.9286, D[1], '1', '汝矣岛现代百货', 'B1/B2潮牌一站式\nThe Hyundai Seoul', 1);
+  addMarker(37.5280, 126.9330, D[1], '1', '汉江公园', '傍晚吹风·便利店泡面\nYeouido Hangang Park', 1);
+  addMarker(37.5600, 126.9830, D[2], '2', '乐天免税店 明洞总店', '集中采购免税品\nLotte Duty Free 9-11层', 2);
+  addMarker(37.5615, 126.9825, D[2], '2', '新世界免税店 明洞', '补充采购\nShinsegae Duty Free', 2);
+  addMarker(37.5609, 126.9860, D[2], '2', '明洞商圈', 'Olive Young·ALAND·夜市\nMyeongdong', 2);
+  addMarker(37.5446, 127.0556, D[3], '3', '圣水洞', '潮牌+27香水+网红美食\nSeongsu-dong 圣水站', 3);
+  addMarker(37.5450, 127.0540, D[3], '3', '圣水香水街区', 'Tamburins·Nonfiction\n27家香氛集中区', 3);
+  addMarker(37.5622, 126.9463, D[4], '4', '梨花女子大学', '最美校园·下沉广场\nEwha Womans Univ.', 4);
+  addMarker(37.5343, 127.0093, D[4], '4', '汉南洞', 'Mardi·EMIS·特色咖啡\nHannam-dong', 4);
+  addMarker(37.5575, 126.9232, D[4], '4', '弘大商圈', 'K-Pop街头表演·烤肠·猪蹄\nHongdae', 4);
+}
+
+// ═══════════ TAB SWITCH ═══════════
+var panels = {1:'p1',2:'p2',3:'p3',4:'p4',5:'p5',all:'pall',talk:'ptalk',wx:'pwx'};
+var centers = {1:[37.527,126.930],2:[37.561,126.984],3:[37.545,127.055],4:[37.557,126.946],5:[37.58,126.90],all:[37.565,126.985],talk:[37.565,126.985],wx:[37.565,126.985]};
+var zooms = {1:14,2:14,3:14,4:13,5:13,all:11,talk:11,wx:11};
+
+function show(n) {
+  document.querySelectorAll('.day-panel').forEach(function(p){p.classList.remove('active');});
+  var id = panels[n]; if (id) { var el = document.getElementById(id); if (el) el.classList.add('active'); }
+  var mapIdx = typeof n==='number'?n-1:(n==='all'?5:n==='talk'?6:n==='wx'?7:8);
+  document.querySelectorAll('#bn button').forEach(function(b,i){b.classList.toggle('active',i===mapIdx);});
+  if (map) {
+    allMarkers.forEach(function(mk){
+      if (!mk._day) { mk.addTo(map); return; }
+      if (n==='all'||n==='talk'||n==='wx'||mk._day==='all'||mk._day===n) mk.addTo(map);
+      else map.removeLayer(mk);
+    });
+    map.flyTo(centers[n]||centers.all, zooms[n]||11, {duration:0.5});
+    setTimeout(function(){ map.invalidateSize(); }, 150);
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════ CURRENCY ═══════════
+var R={cny_krw:185,usd_krw:1350,krw_cny:1/185,krw_usd:1/1350,cny_usd:185/1350,usd_cny:1350/185};
+function g(f,t){return R[f+'_'+t]||1;}
+function cv(){var v=parseFloat(document.getElementById('cnyInput').value)||0;document.getElementById('krwInput').value=Math.round(v*g(document.getElementById('cnyCur').value,document.getElementById('krwCur').value));}
+function cv2(){var v=parseFloat(document.getElementById('krwInput').value)||0;document.getElementById('cnyInput').value=(v*g(document.getElementById('krwCur').value,document.getElementById('cnyCur').value)).toFixed(2);}
+function sw(){
+  var a=document.getElementById('cnyInput').value,b=document.getElementById('krwInput').value;
+  var ac=document.getElementById('cnyCur').value,bc=document.getElementById('krwCur').value;
+  document.getElementById('cnyCur').value=bc==='krw'?'krw':(bc==='usd'?'usd':bc);
+  document.getElementById('krwCur').value=ac==='cny'?'cny':(ac==='usd'?'usd':ac);
+  document.getElementById('cnyInput').value=b;document.getElementById('krwInput').value=a;
+}
+function toggleCurrency(){document.getElementById('currencyModal').classList.toggle('open');}
+
+// ═══════════ EXPENSE TRACKER ═══════════
+var STORAGE_KEY = 'seoul_expenses_2026';
+function loadExpenses() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; } }
+function saveExpenses(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function toggleExpense() { document.getElementById('expenseModal').classList.toggle('open'); renderExpenses(); }
+function addExpense() {
+  var who = document.getElementById('expWho').value;
+  var amt = parseInt(document.getElementById('expAmt').value) || 0;
+  var note = document.getElementById('expNote').value.trim() || '(未备注)';
+  if (amt <= 0) return;
+  var whoLabel = document.getElementById('expWho').selectedOptions[0].text;
+  var list = loadExpenses();
+  list.push({who: whoLabel, amt: amt, note: note, ts: Date.now()});
+  saveExpenses(list);
+  document.getElementById('expAmt').value = ''; document.getElementById('expNote').value = '';
+  renderExpenses();
+}
+function delExpense(idx) {
+  var list = loadExpenses();
+  list.splice(idx, 1);
+  saveExpenses(list);
+  renderExpenses();
+}
+function renderExpenses() {
+  var list = loadExpenses();
+  var total = list.reduce(function(s, e) { return s + e.amt; }, 0);
+  var html = '';
+  list.forEach(function(e, i) {
+    html += '<div class="expense-item"><span>'+e.who+'</span><span>'+e.note+'</span><span style="font-weight:600">₩'+e.amt.toLocaleString()+'</span><span class="del" onclick="delExpense('+i+')">✕</span></div>';
+  });
+  document.getElementById('expenseList').innerHTML = html || '<div style="color:var(--muted);text-align:center;padding:10px;font-size:0.8em;">还没有记录，开始记账吧 ✍️</div>';
+  document.getElementById('expenseTotal').innerHTML = total > 0 ? '💳 总支出：<strong>₩'+total.toLocaleString()+'</strong> ≈ ¥'+Math.round(total/185).toLocaleString() : '';
+}
+
+// ═══════════ CHECK-IN ═══════════
+function toggleCheck(btn, spotId) {
+  var key = 'seoul_checkin_'+spotId;
+  var checked = localStorage.getItem(key) === '1';
+  if (checked) { localStorage.removeItem(key); btn.classList.remove('checked'); btn.innerHTML = '○'; }
+  else { localStorage.setItem(key, '1'); btn.classList.add('checked'); btn.innerHTML = '✓'; }
+}
+function checkBtn(spotId) {
+  var checked = localStorage.getItem('seoul_checkin_'+spotId) === '1';
+  return '<button class="check-btn'+(checked?' checked':'')+'" onclick="event.stopPropagation();toggleCheck(this,\''+spotId+'\')">'+(checked?'✓':'○')+'</button>';
+}
+
+// ═══════════ ACCORDION ═══════════
+function ac(label,open){
+  return '<button class="ac-btn'+(open?' open':'')+'" onclick="this.classList.toggle(\'open\');var c=this.nextElementSibling;if(c)c.classList.toggle(\'open\')">'+label+'</button><div class="ac-content'+(open?' open':'')+'">';
+}
+function ace(){return'</div>';}
+
+// ═══════════ SPOT CARD ═══════════
+function spot(id, name, lat, lng, desc) {
+  return '<div class="spot-card">'+checkBtn(id)+'<div class="sc-body"><div class="sn">'+name+'</div><div class="sd">'+desc+'</div><div class="sa"><a href="'+AM(name,lat,lng)+'" target="_blank">🍎 苹果地图导航</a></div></div></div>';
+}
+
+// ═══════════ PHRASE CARD ═══════════
+function pc(ko,pron,en,zh){return'<div class="pc"><div class="ko">'+ko+'</div><div class="pron">🔊 '+pron+'</div><div class="en">'+en+'</div><div class="zh">'+zh+'</div></div>';}
+
+// ═══════════ BUILD ═══════════
+function buildContent() {
+  var d1='<div class="day-panel active" id="p1">'+
+    '<div class="day-title">Day 1 · 5月27日 (周三)</div>'+
+    '<div class="day-sub">🏬 汝矣岛现代百货 + 🌊 汉江公园 | 轻松落地日</div>'+
+    '<div class="weather-tag">🌤 多云转晴 | 23~28°C | 降雨20% | 👗 T恤+薄外套</div>'+
+    '<ul class="schedule">'+
+    '<li><span class="time">11:00 / 12:25</span><div class="desc"><span class="tag tag-transport">交通</span> <strong>分两批到达！</strong><br>👥3人仁川T1 → 机场大巴6012路/AREX快线 → 鹰岩站 (60-70min)<br>🧑1人金浦 → 地铁直达鹰岩站 (约30min,更近!)</div></li>'+
+    '<li><span class="time">~13:30</span><div class="desc">🏨 酒店汇合！砖石酒店check in。金浦到的人先到，去买T-money卡</div></li>'+
+    '<li><span class="time">14:00</span><div class="desc"><span class="tag tag-transport">交通</span> 🚇 鹰岩站→孔德换5号线→汝矣岛站 (35min)</div></li>'+
+    '<li><span class="time">14:45</span><div class="desc"><span class="tag tag-shop">购物</span> <strong>汝矣岛现代百货 The Hyundai Seoul!</strong> B1/B2韩牌潮牌一站式。emis·STAND OIL·MARITHÉ·carlyn等全有。每次都有不一样的快闪店。韩国人超爱逛</div></li>'+
+    '<li><span class="time">18:00</span><div class="desc"><span class="tag tag-landmark">景点</span> <strong>汉江公园</strong> (步行5分钟)<br>韩国人的国民休闲方式：便利店买泡面+紫菜饭卷+啤酒，坐在汉江边吹风看日落</div></li>'+
+    '<li><span class="time">19:30</span><div class="desc">返回酒店，早点休息，为明天养精蓄锐</div></li>'+
+    '</ul>'+
+    '<div class="route-box">🚇 <strong>路线：</strong>鹰岩站→孔德换5号线→汝矣岛站 | 35min | 百货步行5min到汉江公园 | 轻松半日</div>'+
+    '<div class="section-title">📍 Day1 地点</div><div class="spot-list">'+
+    spot('d1_hyundai','汝矣岛现代百货 The Hyundai Seoul',37.5253,126.9286,'B1/B2潮牌集中(emis·STAND OIL·MARITHÉ等)+快闪店+室内瀑布。韩国当下最火百货')+
+    spot('d1_hangang','汉江公园 Yeouido Hangang Park',37.5280,126.9330,'便利店泡面+紫菜饭卷+啤酒+汉江日落。韩国人的国民休闲方式')+
+    '</div></div>';
+
+  var d2='<div class="day-panel" id="p2">'+
+    '<div class="day-title">Day 2 · 5月28日 (周四)</div>'+
+    '<div class="day-sub">🛒 免税店集中采购 + 明洞核心区 | 扫货日</div>'+
+    '<div class="weather-tag">⛅ 晴转多云 | 24~28°C | 降雨35% | 👗 T恤+薄外套,带折叠伞</div>'+
+    '<ul class="schedule">'+
+    '<li><span class="time">09:30</span><div class="desc"><span class="tag tag-transport">交通</span> 🚇 鹰岩站→三角地换4号线→明洞站 (40min)</div></li>'+
+    '<li><span class="time">10:15</span><div class="desc"><span class="tag tag-shop">购物</span> <strong>乐天免税店 明洞总店!</strong> 乐天百货9-11层。四人集中采购免税品。</div></li>'+
+    '<li><span class="time">12:30</span><div class="desc"><span class="tag tag-shop">购物</span> <strong>新世界免税店 明洞店</strong> (步行5分钟) — 补充采购</div></li>'+
+    '<li><span class="time">13:30</span><div class="desc"><span class="tag tag-food">美食</span> <strong>午餐：</strong>明洞饺子(刀削面+饺子) 或 以南场雪浓汤</div></li>'+
+    '<li><span class="time">14:30</span><div class="desc"><span class="tag tag-shop">购物</span> <strong>明洞商圈逛街！</strong> Olive Young全球旗舰店·ALAND集合店·3CE Pink Hotel</div></li>'+
+    '<li><span class="time">17:30</span><div class="desc"><span class="tag tag-food">美食</span> <strong>明洞夜市小吃</strong> 辣炒年糕·鱼糕串·芝士火鸡串·焦糖饼·炸热狗</div></li>'+
+    '<li><span class="time">20:00</span><div class="desc"><span class="tag tag-shop">购物</span> 晚上更热闹，美妆店折扣多。明洞换钱所汇率最好</div></li>'+
+    '</ul>'+
+    '<div class="duty-warn">⚠️<strong>强提醒：</strong>去乐天和新世界免税店，<span class="tw">务必带好护照原件+电子机票截图！</span>没有护照无法购买免税品！提前在乐天/新罗APP下单到机场提货更便宜~</div>'+
+    '<div class="route-box">🚇 <strong>路线：</strong>鹰岩站→明洞站(40min) | 乐天→新世界→Olive Young→夜市 步行可达</div>'+
+    '<div class="section-title">📍 Day2 地点</div><div class="spot-list">'+
+    spot('d2_lotte','乐天免税店 明洞总店',37.5600,126.9830,'乐天百货9-11层。集中采购免税品。⚠带护照原件+电子机票！APP下单机场提货更便宜')+
+    spot('d2_shin','新世界免税店 明洞店',37.5615,126.9825,'步行5分钟。乐天没货来这里补充采购。⚠同样需要护照')+
+    spot('d2_oy','Olive Young 明洞全球旗舰店',37.5609,126.9860,'韩国版丝芙兰！三层旗舰店，K-beauty一站式。面膜/makeup/护肤全有')+
+    spot('d2_aland','ALAND 明洞潮牌集合店',37.5612,126.9865,'韩国年轻人最爱的潮牌集合店。明洞店是弘大之外最大的一家')+
+    spot('d2_market','明洞夜市小吃街',37.5615,126.9850,'傍晚开始出摊。辣炒年糕·鱼糕串·焦糖饼·炸热狗。备现金！')+
+    '</div></div>';
+
+  var d3='<div class="day-panel" id="p3">'+
+    '<div class="day-title">Day 3 · 5月29日 (周五)</div>'+
+    '<div class="day-sub">🏭 圣水洞全天 | 潮牌+27家香水+网红美食 | "首尔布鲁克林"</div>'+
+    '<div class="weather-tag">☀ 晴好 | 25~28°C | 降雨15% | 👗 户外最佳！短袖可，擦防晒</div>'+
+    '<ul class="schedule">'+
+    '<li><span class="time">09:30</span><div class="desc"><span class="tag tag-transport">交通</span> 🚇 鹰岩站→新堂换2号线→圣水站3号出口 (45min) ⚠今天路程最长</div></li>'+
+    '<li><span class="time">10:15</span><div class="desc"><span class="tag tag-food">美食</span> Standard Bread(即烤生吐司+开心果酱·排队名店)+Maman Gelato冰淇淋</div></li>'+
+    '<li><span class="time">10:45</span><div class="desc"><span class="tag tag-shop">购物</span> <strong>圣水潮牌：</strong>Ader Error·Low Classic·Sienne·Kith·Humanmade·Pureda·Indibrand·Beaker(买手店)·Musinsa大林仓库·STAND OIL</div></li>'+
+    '<li><span class="time">13:00</span><div class="desc"><span class="tag tag-fragrance">香水</span> <strong>🔥圣水香水地图(27家!)</strong> 全部步行可达<br>⭐Tamburins·NONFICTION·BORNTOSTANDOUT·Pesade·Le Labo·Diptyque·Aesop +更多</div></li>'+
+    '<li><span class="time">14:30</span><div class="desc"><span class="tag tag-food">美食</span> 꿉당Kkudang五花肉(米其林!⚠15:00营业) 或 马铃薯排骨汤(24h)</div></li>'+
+    '<li><span class="time">16:00</span><div class="desc"><span class="tag tag-coffee">咖啡</span> ☕<strong>备选：Onion 圣水店</strong>(工业风韩屋咖啡·排队圣地) / Vetiver(黑芝麻口味) / Dalim Bread</div></li>'+
+    '<li><span class="time">17:00</span><div class="desc">继续探索圣水联邦(废弃工厂文化空间)·快闪店·Olive Young N Seongsu</div></li>'+
+    '</ul>'+
+    '<div class="route-box">🚇 <strong>路线：</strong>鹰岩站→圣水站(45min) | 所有店铺步行可达 | 按"重点推荐"优先逛，不用全跑完</div>'+
+    '<div class="section-title">📍 Day3 地点</div><div class="spot-list">'+
+    spot('d3_ader','Ader Error 圣水旗舰店',37.5448,127.0550,'解构主义潮牌代表。前卫装置艺术空间，拍照超酷，必逛！')+
+    spot('d3_musinsa','Musinsa 大林仓库',37.5440,127.0545,'韩国最大时尚电商线下集合店。100+品牌一站逛')+
+    spot('d3_tamburins','Tamburins 圣水旗舰店',37.5450,127.0548,'韩国最火香氛品牌！空间如艺术展，护手霜/香膏必买')+
+    spot('d3_nonfiction','NONFICTION 圣水店',37.5452,127.0552,'韩女感木质冷淡风。护手霜和身体喷雾都很绝')+
+    spot('d3_bts','BORNTOSTANDOUT 圣水店',37.5445,127.0542,'很火的小众沙龙香。香味辨识度极高，大胆独特')+
+    spot('d3_onion','Onion 圣水店 (备选咖啡)',37.5438,127.0555,'工业废墟风韩屋咖啡馆。排队圣地但值得！面包+咖啡都很出片')+
+    spot('d3_kkudang','꿉당 Kkudang 五花肉',37.5455,127.0558,'米其林推荐！烤猪颈肉+五花肉招牌 ⚠下午3点开始营业')+
+    '</div></div>';
+
+  var d4='<div class="day-panel" id="p4">'+
+    '<div class="day-title">Day 4 · 5月30日 (周六)</div>'+
+    '<div class="day-sub">🏛 梨大最美校园 + 🌿 汉南洞精品 + 🎸 弘大夜生活</div>'+
+    '<div class="weather-tag">☁ 多云转阴 | 26~30°C | 降雨45% | 👗 T恤+薄外套,必带伞</div>'+
+    '<ul class="schedule">'+
+    '<li><span class="time">09:00</span><div class="desc"><span class="tag tag-transport">交通</span> 🚇 鹰岩站→佛光换3号线→景福宫换2号线→梨大站 (35min)</div></li>'+
+    '<li><span class="time">09:45</span><div class="desc"><span class="tag tag-landmark">景点</span> <strong>梨花女子大学</strong> (免费)<br>韩国最美校园！下沉式图书馆+ECC地下校园(多米尼克·佩罗设计)。校前梨大街也很好逛</div></li>'+
+    '<li><span class="time">11:30</span><div class="desc"><span class="tag tag-transport">交通</span> 🚕 梨大→汉南洞 打车约15min (₩10,000-12,000)</div></li>'+
+    '<li><span class="time">12:00</span><div class="desc"><span class="tag tag-shop">购物</span> <strong>汉南洞</strong>(⚠坡多!) Mardi Mercredi小雏菊·EMIS·MSMR袜子店·Beaker买手店·Nonfiction</div></li>'+
+    '<li><span class="time">14:00</span><div class="desc"><span class="tag tag-coffee">咖啡</span> Anthracite Coffee 汉南 (废弃工厂改造工业风) 或 Sayoo</div></li>'+
+    '<li><span class="time">15:30</span><div class="desc"><span class="tag tag-transport">交通</span> 🚇 汉江镇站→三角地换4号线→忠武路换2号线→弘大入口站 (35min) 或打车20min</div></li>'+
+    '<li><span class="time">16:30</span><div class="desc"><span class="tag tag-shop">购物</span> <strong>弘大商圈</strong> 韩国潮牌：COVERNAT·thisisneverthat·WorksOut买手店 ⚠<span class="tw">弘大主街不要买衣服!</span></div></li>'+
+    '<li><span class="time">18:00</span><div class="desc"><span class="tag tag-landmark">景点</span> <strong>K-Pop街头表演</strong> 9号出口附近最热闹！每天都有</div></li>'+
+    '<li><span class="time">18:30</span><div class="desc"><span class="tag tag-food">美食</span> <strong>晚餐：</strong>烤牛肠(弘大烤肠一条街)·弘大猪蹄·Hotel De GGOODD烟熏鸭肉意面</div></li>'+
+    '<li><span class="time">20:00</span><div class="desc">弘大夜市+街头表演·最后一天晚上尽情享受</div></li>'+
+    '</ul>'+
+    '<div class="route-box">🚇 <strong>路线：</strong>鹰岩站→梨大站(35min)→打车汉南洞(15min)→地铁弘大(35min) | 最丰富的一天</div>'+
+    '<div class="section-title">📍 Day4 地点</div><div class="spot-list">'+
+    spot('d4_ewha','梨花女子大学',37.5622,126.9463,'韩国最美校园！下沉式图书馆+ECC地下校园。校前梨大街逛街')+
+    spot('d4_mardi','Mardi Mercredi 汉南洞',37.5343,127.0093,'小雏菊logo韩国潮牌。汉南有两家店，款式最全')+
+    spot('d4_emis','EMIS 汉南店',37.5348,127.0088,'韩国设计品牌。帽子/包包/T恤都很火，韩女人手一个')+
+    spot('d4_msmr','MSMR 袜子店',37.5350,127.0098,'汉南洞超人气小店。买袜子送贴纸，包装像礼物一样精美')+
+    spot('d4_hongdae','弘大商圈',37.5575,126.9232,'韩国最年轻活力的商圈。潮牌+K-Pop街头表演+夜市')+
+    spot('d4_worksout','WorksOut 弘大买手店',37.5550,126.9220,'3层楼100+品牌一站式购齐。弘大必逛集合店')+
+    spot('d4_gopchang','弘大烤肠一条街',37.5510,126.9220,'韩式烤牛肠/猪肠。现烤现吃外焦里嫩，配烧酒绝了')+
+    '</div></div>';
+
+  var d5='<div class="day-panel" id="p5">'+
+    '<div class="day-title">Day 5 · 5月31日 (周日)</div>'+
+    '<div class="day-sub">🛫 分两批出发→免税提货→回家 | ⚠四人不同航班!</div>'+
+    '<div class="weather-tag">🌧 雨转阴 | 25~31°C | 降雨60% | 👗 带伞防雨，回程日</div>'+
+    '<ul class="schedule">'+
+    '<li><span class="time">07:30</span><div class="desc">🛏 <strong>3人早起!</strong> 收拾行李</div></li>'+
+    '<li><span class="time">08:30</span><div class="desc"><span class="tag tag-transport">交通</span> 👥<strong>3人→仁川T1!</strong> 航班11:55(MU550/MU6257)<br>机场大巴/AREX→仁川T1(60-70min) ⚠9:55前到!</div></li>'+
+    '<li><span class="time">09:00</span><div class="desc">🧑 <strong>1人多睡会儿</strong> 航班13:30金浦(CZ318)</div></li>'+
+    '<li><span class="time">09:45</span><div class="desc"><span class="tag tag-shop">购物</span> 👥3人仁川T1免税提货+扫货 ⚠<span class="tw">四人都有免税品要提!</span></div></li>'+
+    '<li><span class="time">11:00</span><div class="desc">🧑出发去金浦(地铁30min,金浦近多了)→免税提货</div></li>'+
+    '<li><span class="time">11:55/13:30</span><div class="desc">✈️ 回家!</div></li>'+
+    '</ul>'+
+    '<div class="route-box warn">⚠<strong>重要：</strong>四人航班不同！3人仁川T1 11:55·1人金浦13:30·四人均需机场提货！提前APP确认提货点位置！仁川和金浦提货点不同!</div>'+
+    '<div class="section-title">📍 Day5 地点</div><div class="spot-list">'+
+    spot('d5_icn','仁川国际机场 T1',37.4602,126.4407,'3人出发/到达。免税品提货点在过安检后。APP下单提前机场提货更便宜')+
+    spot('d5_gmp','金浦国际机场',37.5580,126.7950,'1人出发/到达。比仁川离酒店近得多。免税品提货点在过安检后')+
+    '</div></div>';
+
+  var dall='<div class="day-panel" id="pall">'+
+    '<div class="day-title">🗺️ 5天总览</div>'+
+    '<table class="tbl"><tr><th>日</th><th>日期</th><th>主题</th><th>核心区域</th><th>天气</th></tr>'+
+    '<tr><td>D1</td><td>5/27 周三</td><td>🏬汉江与百货</td><td>汝矣岛现代百货+汉江公园</td><td>🌤28°C</td></tr>'+
+    '<tr><td>D2</td><td>5/28 周四</td><td>🛒免税+明洞</td><td>乐天/新世界免税+明洞商圈</td><td>⛅28°C</td></tr>'+
+    '<tr><td>D3</td><td>5/29 周五</td><td>🏭圣水洞全天</td><td>潮牌+27香水+网红美食</td><td>☀28°C</td></tr>'+
+    '<tr><td>D4</td><td>5/30 周六</td><td>🏛梨大+汉南+弘大</td><td>梨大校园→汉南精品→弘大夜生活</td><td>☁30°C</td></tr>'+
+    '<tr><td>D5</td><td>5/31 周日</td><td>🛫离境</td><td>3人仁川T1+1人金浦</td><td>🌧31°C</td></tr>'+
+    '</table>'+
+    '<div class="section-title">🍖 必吃清单</div>'+
+    '<table class="tbl"><tr><th>美食</th><th>位置</th><th>哪天</th></tr>'+
+    '<tr><td>汉江泡面+啤酒</td><td>汉江公园便利店</td><td>Day1</td></tr>'+
+    '<tr><td>明洞夜市小吃</td><td>明洞主街</td><td>Day2</td></tr>'+
+    '<tr><td>韩牛烤肉 꿉당</td><td>圣水洞</td><td>Day3</td></tr>'+
+    '<tr><td>Maman Gelato</td><td>圣水洞</td><td>Day3</td></tr>'+
+    '<tr><td>马铃薯排骨汤</td><td>圣水洞</td><td>Day3</td></tr>'+
+    '<tr><td>Onion 圣水咖啡</td><td>圣水洞</td><td>Day3</td></tr>'+
+    '<tr><td>烤牛肠</td><td>弘大烤肠一条街</td><td>Day4</td></tr>'+
+    '<tr><td>弘大猪蹄</td><td>연남족발1987</td><td>Day4</td></tr>'+
+    '<tr><td>炸鸡啤酒</td><td>BHC/桥村/자담치킨</td><td>随时</td></tr>'+
+    '</table></div>';
+
+  var dtalk='<div class="day-panel" id="ptalk">'+
+    '<div class="day-title">💬 应急用语</div><div class="day-sub">指给对方看+简单英语单词即可！商圈很多中文店员</div>'+
+    '<div class="section-title">🛍️ 购物</div><div class="phrase-grid">'+
+    pc('이거 얼마예요?','i-geo eol-ma-ye-yo','How much?','这个多少钱？')+
+    pc('카드 돼요?','ka-deu dwae-yo','Card OK?','可以刷卡吗？')+
+    pc('택스리펀드?','taek-seu-ri-peon-deu','Tax refund?','可以退税吗？')+
+    pc('깎아주세요','kka-kka-ju-se-yo','Discount please','便宜一点吧')+
+    pc('그냥 구경이에요','geu-nyang gu-gyeong-i-e-yo','Just looking','只是看看')+
+    pc('입어봐도 돼요?','i-beo-bwa-do dwae-yo','Can I try on?','可以试穿吗？')+
+    '</div>'+
+    '<div class="section-title">🍽️ 餐厅</div><div class="phrase-grid">'+
+    pc('이거 주세요','i-geo ju-se-yo','This one please','请给我这个(指菜单)')+
+    pc('메뉴 주세요','me-nyu ju-se-yo','Menu please','请给我菜单')+
+    pc('맛있어요!','ma-si-sseo-yo','Delicious!','好吃！')+
+    pc('계산해 주세요','gye-san-hae ju-se-yo','Bill please','请结账')+
+    pc('덜 맵게 해주세요','deol maep-ge hae-ju-se-yo','Less spicy please','请少放辣')+
+    pc('포장해 주세요','po-jang-hae ju-se-yo','Takeout please','请打包')+
+    '</div>'+
+    '<div class="tips" style="margin-top:8px;"><h3>📱 保命技巧</h3><ul>'+
+    '<li><strong>Papago</strong> — 拍照翻译菜单非常准</li>'+
+    '<li><strong>手指沟通：</strong>指菜单+比数字。韩国超多餐厅有图片菜单</li>'+
+    '<li><strong>明洞/弘大</strong>大部分店有中文店员</li>'+
+    '</ul></div></div>';
+
+  var dwx='<div class="day-panel" id="pwx">'+
+    '<div class="day-title">🌤 5天天气预报</div>'+
+    '<div class="day-sub">⚠远期预报有不确定性！出发前3天查 <a href="https://www.kma.go.kr" style="color:var(--blue)">KMA官网</a></div>'+
+    '<table class="tbl"><tr><th>日期</th><th>天气</th><th>高温</th><th>低温</th><th>降雨</th><th>穿搭建议</th></tr>'+
+    '<tr><td>5/27</td><td>🌤多云转晴</td><td>28°C</td><td>22°C</td><td>20%</td><td>T恤+薄外套，傍晚凉</td></tr>'+
+    '<tr><td>5/28</td><td>⛅晴转多云</td><td>28°C</td><td>21°C</td><td>35%</td><td>T恤+薄外套，带折叠伞</td></tr>'+
+    '<tr><td>5/29</td><td>☀晴好</td><td>28°C</td><td>18°C</td><td>15%</td><td>短袖OK！擦防晒，户外最佳</td></tr>'+
+    '<tr><td>5/30</td><td>☁多云转阴</td><td>30°C</td><td>20°C</td><td>45%</td><td>轻薄透气，必带伞</td></tr>'+
+    '<tr><td>5/31</td><td>🌧雨转阴</td><td>31°C</td><td>20°C</td><td>60%</td><td>回程日，带伞防雨</td></tr>'+
+    '</table>'+
+    '<div class="tips" style="margin-top:8px;"><h3>🧳 打包清单</h3><ul>'+
+    '<li>👕短袖T恤x4-5 · 长袖/薄卫衣x1-2</li><li>🧥薄外套/牛仔外套x1 (早晚+空调房)</li>'+
+    '<li>👖长裤x2-3 (韩国人5月都穿长裤)</li><li>👟舒适运动鞋(日均2万步!不要穿新鞋!)</li>'+
+    '<li>☂折叠伞 · 🧴防晒霜+墨镜 · 🔌转换插头(C/F型) · 💊常用药</li></ul></div></div>';
+
+  document.getElementById('app').innerHTML = d1+d2+d3+d4+d5+dall+dtalk+dwx;
+}
+
+// ═══════════ INIT ═══════════
+document.addEventListener('DOMContentLoaded', function(){
+  buildContent();
+  initMap();
+  createAllMarkers();
+  cv();
+  renderExpenses();
+  window.addEventListener('resize', function(){ if(map) setTimeout(function(){ map.invalidateSize(); }, 200); });
+});
+</script>
+</body>
+</html>
